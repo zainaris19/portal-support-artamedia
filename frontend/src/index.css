@@ -1,0 +1,169 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Bricolage+Grotesque:opsz,wght@12..96,500;600;700;800&family=Sora:wght@500;600;700;800&display=swap');
+
+@layer base {
+  :root {
+    /* Light Mode: putih, abu-abu muda, navy, aksen biru lembut */
+    --background: 210 40% 98%;         /* #F8FAFC */
+    --foreground: 222 47% 11%;         /* #0F172A navy dark */
+    --card: 0 0% 100%;                 /* #FFFFFF */
+    --card-foreground: 222 47% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+    --primary: 217 91% 60%;            /* soft blue #3B82F6 */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 214 32% 91%;          /* light slate */
+    --secondary-foreground: 222 47% 11%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 47%;   /* #64748B */
+    --accent: 214 32% 91%;
+    --accent-foreground: 222 47% 11%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 214 32% 91%;             /* #E2E8F0 */
+    --input: 214 32% 91%;
+    --ring: 217 91% 60%;
+    --chart-1: 217 91% 60%;
+    --chart-2: 199 89% 48%;
+    --chart-3: 168 76% 42%;
+    --chart-4: 262 47% 55%;
+    --chart-5: 43 74% 55%;
+    --radius: 0.5rem;
+  }
+  .dark {
+    /* Dark Mode: charcoal, dark navy, abu-abu gelap, teks putih lembut */
+    --background: 222 47% 8%;          /* #0B1220 charcoal navy */
+    --foreground: 210 40% 96%;         /* soft white #F1F5F9 */
+    --card: 222 47% 11%;               /* #0F172A */
+    --card-foreground: 210 40% 96%;
+    --popover: 222 47% 11%;
+    --popover-foreground: 210 40% 96%;
+    --primary: 213 94% 68%;            /* #60A5FA softer blue for dark */
+    --primary-foreground: 222 47% 11%;
+    --secondary: 217 33% 17%;          /* #1E293B */
+    --secondary-foreground: 210 40% 96%;
+    --muted: 217 33% 17%;
+    --muted-foreground: 215 20% 65%;   /* #94A3B8 */
+    --accent: 217 33% 20%;
+    --accent-foreground: 210 40% 96%;
+    --destructive: 0 63% 40%;
+    --destructive-foreground: 210 40% 96%;
+    --border: 217 33% 22%;             /* #334155 */
+    --input: 217 33% 22%;
+    --ring: 213 94% 68%;
+    --chart-1: 213 94% 68%;
+    --chart-2: 199 89% 60%;
+    --chart-3: 168 76% 55%;
+    --chart-4: 262 60% 70%;
+    --chart-5: 43 74% 65%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  html, body, #root {
+    height: 100%;
+    overflow: hidden;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Manrope', sans-serif;
+    letter-spacing: -0.01em;
+  }
+  code, pre, .mono {
+    font-family: 'JetBrains Mono', monospace;
+  }
+}
+
+@layer utilities {
+  .surface-panel {
+    @apply bg-card border border-border rounded-lg;
+  }
+  .fade-in {
+    animation: fadeIn 180ms ease-out;
+  }
+  .slide-up {
+    animation: slideUp 220ms ease-out;
+  }
+  .font-display {
+    font-family: 'Bricolage Grotesque', 'Manrope', sans-serif;
+    font-feature-settings: 'ss01', 'ss02';
+    letter-spacing: -0.03em;
+  }
+  .font-brand {
+    font-family: 'Sora', 'Manrope', sans-serif;
+    letter-spacing: -0.02em;
+  }
+  .brand-gradient {
+    background: linear-gradient(120deg, hsl(217 91% 60%) 0%, hsl(199 89% 55%) 45%, hsl(168 76% 45%) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    background-size: 200% 200%;
+    animation: brandShift 6s ease-in-out infinite;
+  }
+  .dark .brand-gradient {
+    background: linear-gradient(120deg, hsl(213 94% 72%) 0%, hsl(199 89% 65%) 45%, hsl(168 76% 60%) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    background-size: 200% 200%;
+    animation: brandShift 6s ease-in-out infinite;
+  }
+  .ticker-track {
+    display: inline-flex;
+    gap: 3rem;
+    animation: tickerScroll 38s linear infinite;
+    white-space: nowrap;
+    will-change: transform;
+  }
+  .ticker-track:hover {
+    animation-play-state: paused;
+  }
+  .greeting-bar {
+    background:
+      radial-gradient(1200px 60px at 10% 50%, hsl(217 91% 60% / 0.08), transparent 60%),
+      radial-gradient(1200px 60px at 90% 50%, hsl(168 76% 45% / 0.08), transparent 60%),
+      linear-gradient(90deg, hsl(217 91% 60% / 0.06), hsl(199 89% 55% / 0.08), hsl(168 76% 45% / 0.06));
+    border-bottom: 1px solid hsl(var(--border));
+  }
+  .dark .greeting-bar {
+    background:
+      radial-gradient(1200px 60px at 10% 50%, hsl(213 94% 72% / 0.12), transparent 60%),
+      radial-gradient(1200px 60px at 90% 50%, hsl(168 76% 55% / 0.10), transparent 60%),
+      linear-gradient(90deg, hsl(213 94% 72% / 0.08), hsl(199 89% 65% / 0.10), hsl(168 76% 55% / 0.08));
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes brandShift {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+@keyframes tickerScroll {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+/* Scrollbar (subtle) */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: hsl(var(--border)); border-radius: 8px; }
+::-webkit-scrollbar-thumb:hover { background: hsl(var(--muted-foreground) / 0.4); }

@@ -1,0 +1,60 @@
+/* Topology light-theme lock — canvas & map always use light theme regardless of app dark mode */
+.topology-light-scope {
+  color-scheme: light;
+  background: #ffffff;
+  color: #0f172a;
+  /* Trap ALL Leaflet internal z-indexes (panes 200-700, controls 800-1000)
+     inside a single stacking context so they can NEVER paint above app
+     modals/drawers (Radix overlay is z-50 at document.body level). */
+  isolation: isolate;
+}
+.topology-light-scope .rf-canvas,
+.topology-light-scope .leaflet-container {
+  background: #f8fafc !important;
+}
+/* Pick mode: force crosshair over Leaflet (overrides .leaflet-grab cursor) */
+.topology-light-scope.picking .leaflet-container,
+.topology-light-scope.picking .leaflet-grab,
+.topology-light-scope.picking .leaflet-interactive {
+  cursor: crosshair !important;
+}
+/* Ensure leaflet container fills the topology-light-scope wrapper (fixes height:100% not resolving in flex layouts) */
+.topology-light-scope {
+  position: relative;
+}
+.topology-light-scope .leaflet-container {
+  position: absolute !important;
+  top: 0; left: 0; right: 0; bottom: 0;
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 500px;
+}
+.topology-light-scope .react-flow__node {
+  color: #0f172a;
+}
+.topology-light-scope .react-flow__edge-path {
+  stroke-width: 2;
+}
+.topology-light-scope .react-flow__controls,
+.topology-light-scope .react-flow__minimap {
+  background: #ffffff !important;
+  color: #0f172a !important;
+  border: 1px solid #e2e8f0 !important;
+}
+.topology-light-scope .react-flow__controls-button {
+  background: #ffffff !important;
+  color: #0f172a !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+}
+.topology-light-scope .react-flow__controls-button:hover {
+  background: #f1f5f9 !important;
+}
+/* Link colors by type */
+.link-fiber { stroke: #1e40af; }
+.link-metro { stroke: #7c3aed; }
+.link-cross { stroke: #64748b; stroke-dasharray: 6 3; }
+.link-radio { stroke: #f97316; stroke-dasharray: 4 4; }
+.link-dedicated { stroke: #059669; }
+.link-broadband { stroke: #0ea5e9; }
+.link-tunnel { stroke: #dc2626; stroke-dasharray: 2 3; }
+.link-vlan { stroke: #0891b2; stroke-dasharray: 8 3; }
