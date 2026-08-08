@@ -395,6 +395,7 @@ def _light_summary(device: dict, cfg: Dict[str, Any]) -> Dict[str, Any]:
     minutes = _last_inform_minutes(li)
     prefix = cfg.get("cluster_prefix", DEFAULT_PREFIX)
     ctags = _device_cluster_tags(tags, cfg)
+    rx = _to_float(_first(device, RX_OPTICAL_PATHS))
     return {
         "id": device.get("_id"),
         "manufacturer": did.get("_Manufacturer"),
@@ -406,6 +407,9 @@ def _light_summary(device: dict, cfg: Dict[str, Any]) -> Dict[str, Any]:
         "tags": tags,
         "cluster_tags": ctags,
         "cluster": _cluster_label(ctags[0], prefix) if ctags else None,
+        "pppoe_username": _first(device, PPPOE_USER_PATHS),
+        "rx_optical": rx,
+        "poor_optical": bool(rx is not None and rx < POOR_OPTICAL_DBM),
         "last_inform": li,
         "last_inform_minutes": round(minutes, 1) if minutes is not None else None,
         "last_boot": device.get("_lastBoot"),
@@ -448,7 +452,10 @@ async def _get_index(db, force: bool = False) -> Dict[str, Any]:
                     "error": None, "cfg": cfg}
         try:
             client = await _client_from_db(db)
-            raw = await client.get_devices(query={}, projection=LIGHT_PROJECTION)
+            # Base metadata + a few scalar params (PPPoE username & RX optical) so the
+            # device table can show them without a per-row detail call.
+            list_projection = LIGHT_PROJECTION + PPPOE_USER_PATHS + RX_OPTICAL_PATHS
+            raw = await client.get_devices(query={}, projection=list_projection)
             devices: List[Dict[str, Any]] = []
             parse_errors = 0
             for d in raw:
@@ -769,7 +776,7 @@ def build_genieacs_router(get_current_user, require_roles) -> APIRouter:
             if ql:
                 hay = " ".join(str(x or "") for x in [
                     d["id"], d["serial"], d["manufacturer"], d["product_class"],
-                    " ".join(d["tags"] or [])]).lower()
+                    d.get("pppoe_username"), " ".join(d["tags"] or [])]).lower()
                 if ql not in hay:
                     return False
             return True

@@ -330,23 +330,23 @@ function DeviceTable({ devices, loading, onOpen, pageStart }) {
       <Table>
         <TableHeader>
           <TableRow className="bg-muted/40 hover:bg-muted/40">
-            {['No', 'Cluster', 'Tags', 'Serial Number', 'Manufacturer', 'Model', 'Last Inform', 'Last Boot', 'Status'].map((h) => (
+            {['No', 'Cluster', 'PPPoE Username', 'RX Power', 'Serial Number', 'Manufacturer', 'Model', 'Last Inform', 'Last Boot', 'Status'].map((h) => (
               <TableHead key={h} className="text-xs whitespace-nowrap">{h}</TableHead>
             ))}
           </TableRow>
         </TableHeader>
         <TableBody>
-          {loading && Array.from({ length: 6 }).map((_, i) => (<TableRow key={i}><TableCell colSpan={9}><Skeleton className="h-6 w-full" /></TableCell></TableRow>))}
-          {!loading && devices.length === 0 && (<TableRow><TableCell colSpan={9} className="text-center py-10 text-sm text-muted-foreground">Tidak ada device.</TableCell></TableRow>)}
+          {loading && Array.from({ length: 6 }).map((_, i) => (<TableRow key={i}><TableCell colSpan={10}><Skeleton className="h-6 w-full" /></TableCell></TableRow>))}
+          {!loading && devices.length === 0 && (<TableRow><TableCell colSpan={10} className="text-center py-10 text-sm text-muted-foreground">Tidak ada device.</TableCell></TableRow>)}
           {!loading && devices.map((d, i) => (
             <TableRow key={d.id} className="hover:bg-accent/40 cursor-pointer" onClick={() => onOpen(d.id)} data-testid={`genieacs-row-${d.id}`}>
               <TableCell className="text-xs text-muted-foreground tabular-nums">{pageStart + i + 1}</TableCell>
               <TableCell className="text-xs">{d.cluster ? <Badge variant="outline" className="text-[10px]">{titleCase(d.cluster)}</Badge> : <span className="text-muted-foreground">—</span>}</TableCell>
               <TableCell className="text-xs">
-                <div className="flex flex-wrap gap-1 max-w-[200px]">
-                  {(d.tags || []).length ? d.tags.slice(0, 3).map((t) => <Badge key={t} variant="secondary" className="text-[9px] font-normal">{t}</Badge>) : <span className="text-muted-foreground">—</span>}
-                  {(d.tags || []).length > 3 && <span className="text-[10px] text-muted-foreground">+{d.tags.length - 3}</span>}
-                </div>
+                <span className="font-mono">{d.pppoe_username || <span className="text-muted-foreground font-sans">—</span>}</span>
+              </TableCell>
+              <TableCell className={`text-xs font-mono tabular-nums whitespace-nowrap ${d.poor_optical ? 'text-amber-400 font-semibold' : ''}`}>
+                {d.rx_optical == null ? <span className="text-muted-foreground font-sans">—</span> : `${Number(d.rx_optical).toFixed(1)} dBm`}
               </TableCell>
               <TableCell className="text-xs">
                 <div className="font-mono font-medium flex items-center gap-1">{d.serial || '—'}{d.has_fault && <AlertTriangle className="w-3 h-3 text-rose-400" />}</div>
