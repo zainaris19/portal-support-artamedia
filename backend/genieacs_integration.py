@@ -240,8 +240,13 @@ def _dig(node: Any, path: str) -> Any:
         if not isinstance(cur, dict) or part not in cur:
             return None
         cur = cur[part]
-    if isinstance(cur, dict) and "_value" in cur:
-        return cur["_value"]
+    if isinstance(cur, dict):
+        if "_value" in cur:
+            return cur["_value"]
+        # Leaf parameter node without a value (e.g. {"_object": false, "_writable": false}).
+        # Treat as empty so scalar fields never receive a raw GenieACS node dict.
+        if cur.get("_object") is False:
+            return None
     return cur
 
 
@@ -251,6 +256,9 @@ def _first(device: dict, candidates: List[str]) -> Any:
             v = _dig(device, c)
         except Exception:
             v = None
+        # Scalar-only: never leak an object/subtree node dict (or list) into a scalar field.
+        if isinstance(v, (dict, list)):
+            continue
         if v not in (None, ""):
             return v
     return None
@@ -804,8 +812,7 @@ def build_genieacs_router(get_current_user, require_roles) -> APIRouter:
             detail = _detail(raw[0], cfg)
         except Exception as e:  # noqa: BLE001
             logger.warning("GENIEACS_DEVICE_PARSE_ERROR (detail) id=%s err=%s", device_id, str(e)[:200])
-            raise HTTPException(422, {"error": "GENIEACS_DEVICE_PARSE_ERROR",
-                                      "message": str(e)[:200], "device_id": device_id})
+            raise HTTPException(422, f"Gagal membaca detail device dari GenieACS: {str(e)[:200]}")
         try:
             faults = await client.get_faults(query={"device": device_id})
         except Exception:
