@@ -733,7 +733,12 @@ async def notify_closing_resume(db, ticket: Dict[str, Any]) -> None:
         main_group = (settings.get("main_group") or "").strip()
         base = _public_base_url(settings)
         tid = ticket.get("id")
-        history_url = f"{base}/crm/ticket/{tid}/history" if base else f"/crm/ticket/{tid}/history"
+        # Trace history link MUST be publicly openable (recipients in the WhatsApp
+        # Main/Management group are not logged in). Use the public tracking page
+        # (/track/{token}) which renders the full timeline, progress, documentation
+        # and completion details — NOT the login-protected /crm history route.
+        token = await ensure_tracking_token(db, ticket)
+        history_url = f"{base}/track/{token}" if base else f"/track/{token}"
         ctx = {
             "ticket_number": ticket.get("ticket_number") or "-",
             "customer_name": ticket.get("customer_name") or "-",

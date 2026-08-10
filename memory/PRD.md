@@ -221,3 +221,9 @@ Enhancement (tanpa mengubah flow CRM existing). Dua fitur:
 - Backend deps: base venv had most; installed missing pins (librouteros, pysnmp, paramiko, PyNaCl, pysnmpcrypto, invoke) via `pip install --no-deps` to bypass litellm/emergentintegrations resolver conflict.
 - backend/.env set: JWT_SECRET, NOC_ENC_KEY (Fernet), ADMIN_EMAIL/PASSWORD, PUBLIC_BASE_URL. MONGO_URL/DB_NAME preserved.
 - Verified E2E via public URL: login → /auth/me → /users (5 seeded users). Frontend login page renders, system status API/DB/Storage Online. All services RUNNING.
+
+## Bug Fix — Closing Resume trace link (Aug 10, 2026) — ✅ DONE, verified iter_7 (7/7)
+- Reported: saat ticket SELESAI, resume + link trace histori tidak sampai ke Main/Management group.
+- Root cause: (1) resume trace link mengarah ke route ber-login `/crm/ticket/{id}/history` → tidak bisa dibuka dari grup WhatsApp; (2) toggle `send_closing_resume` masih OFF.
+- Fix: `notify_closing_resume()` di `/app/backend/notifications.py` kini pakai `ensure_tracking_token()` + link PUBLIC `/track/{token}` (halaman tracking publik: timeline, progress+foto, dokumentasi, completion). Toggle `send_closing_resume` diaktifkan.
+- Verified: create→process→resolve → log `closing_resume` ke main_group berisi link `/track/{token}` (bukan `/crm/ticket/`), dan `GET /api/track/{token}` tanpa login mengembalikan timeline + completion. Notifikasi lifecycle lain (created/assigned/resolved) tetap jalan.

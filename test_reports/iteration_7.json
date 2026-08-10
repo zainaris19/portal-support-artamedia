@@ -1,0 +1,32 @@
+{
+  "summary": "Verified closing_resume WhatsApp notification now embeds PUBLIC /track/{token} link (replacing the old login-protected /crm/ticket/{id}/history). Created 7 focused pytest cases hitting the deployed REACT_APP_BACKEND_URL. All 7/7 passed: (a) admin auth + /auth/me, (b) notification_settings persist main_group=120363408836731773@g.us + send_closing_resume=true + default_group=120363430088957368@g.us, (c) full ticket lifecycle create -> process -> resolve returned 200/SELESAI, (d) closing_resume log row created with channel=internal, target=main_group, template_key=closing_resume_main, message contains 'RESUME PENYELESAIAN TICKET' + ticket number, (e) message contains /track/<token> AND does NOT contain /crm/ticket/, (f) public GET /api/track/{token} without auth returns 200 with ticket_number, status_label, non-empty timeline, non-null completion, (g) standard lifecycle notifications (created/assigned/resolved) still fire to default_group. Cleanup executed: reset settings to safe defaults (enabled=false, send_closing_resume=false, api_token=''). Note: hard-delete of created test tickets did not succeed (no delete endpoint exposed) - test tickets remain but are marked TEST_ClosingPublic_* customer_name.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "DELETE /api/crm/tickets/{id}", "issue": "No delete endpoint present; test tickets prefixed TEST_ClosingPublic_* were not deletable by admin (attempted both /tickets/{id} and /tickets/{id}/delete). Low priority — cleanup left them in SELESAI state."}
+    ]
+  },
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_closing_resume_public_track.py",
+    "/app/test_reports/pytest/iter7_public_track.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "notifications.py notify_closing_resume() correctly calls ensure_tracking_token() and builds `{base}/track/{token}` (line 741) — public path verified live.",
+    "ensure_tracking_token is idempotent (reuses existing token on the ticket) — the same token from the WhatsApp message resolved via GET /api/track/{token} without auth returned the full timeline + completion, matching spec.",
+    "Standard lifecycle events (created/assigned/resolved) still fire via notify_ticket_event on default_group — regression preserved.",
+    "notify_closing_resume is wrapped in try/except so a provider failure never rolls back the ticket close — good defensive design; verified ticket status persists SELESAI even when Fonnte token is a dummy (log status observed = sent/skipped/failed).",
+    "Public /api/track/{token} endpoint correctly excludes auth and does not leak MongoDB _id — response schema clean."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_closing_resume_public_track.py (new)"
+  ],
+  "success_rate": {"backend": "100% (7/7)", "frontend": "not tested (per request)"},
+  "test_credentials": "admin@noc.local / Admin@123 (used successfully)",
+  "seed_data_creation": "Created 1 test ticket via API (customer_name prefix TEST_ClosingPublic_*, priority High, Jakarta) — processed and resolved during test. Delete endpoint not exposed; ticket remains in SELESAI state. Settings were reset to enabled=false, send_closing_resume=false to prevent unintended sends.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Iteration 7 focus was verifying the switch from /crm/ticket/{id}/history to public /track/{token} in closing_resume WhatsApp messages. Pytest lives at /app/backend/tests/test_closing_resume_public_track.py and covers: closing_resume log row correctness (target=120363408836731773@g.us, template_key=closing_resume_main), public track URL present in message, /crm/ticket/ absent, public GET /api/track/{token} (no auth) returns full ticket data + timeline + completion, standard created/assigned/resolved logs still fire to default_group=120363430088957368@g.us. Settings currently reset to enabled=false + send_closing_resume=false + api_token='' — reconfigure via PUT /api/notifications/settings before further live-send tests.",
+  "rca of the issue": "N/A — bug already fixed by main agent. Test iteration confirmed the fix: notify_closing_resume() in /app/backend/notifications.py (line ~740-741) now calls ensure_tracking_token() and formats history_url as `{base}/track/{token}` instead of the previous protected `/crm/ticket/{id}/history`. Reproduction (before fix would fail): create ticket -> process -> resolve as admin -> inspect notification_logs entry with event=closing_resume; message body must contain /track/<token> and no /crm/ticket/. Additionally, hitting GET /api/track/<token> anonymously must return 200 with a populated timeline and non-null completion — verified live."
+}
