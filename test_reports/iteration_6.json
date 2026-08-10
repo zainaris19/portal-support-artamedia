@@ -1,0 +1,43 @@
+{
+  "summary": "Tested new CRM enhancements: (1) Closing Resume WhatsApp notification to Main/Management group + Settings toggle & field, (2) full Ticket History page at /crm/ticket/{id}/history with auth-redirect-back and mobile responsiveness. All backend pytest cases (6/6) and all frontend flows PASSED. Settings were reset to enabled=false, send_closing_resume=false, main_group='' after tests to avoid real sends.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_closing_resume.py",
+    "/app/test_reports/pytest/closing_resume.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "notify_closing_resume gracefully handles missing main_group by delegating to send_message which logs status='skipped' with target empty — good. Close still succeeds. Verified.",
+    "notify_closing_resume is called AFTER notify_ticket_event('resolved') in crm_helpdesk.py line 878 as documented; ticket status persists as SELESAI even when send fails (dummy token) — no rollback. Verified.",
+    "Public settings response correctly exposes main_group + send_closing_resume without leaking token; token stored encrypted via Fernet — good.",
+    "TicketHistory.jsx builds the timeline entirely from existing ticket fields (progress, reassign_history, audit fields). No new collection introduced — matches requirement."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_closing_resume.py (new)"
+  ],
+  "success_rate": {"backend": "100% (6/6)", "frontend": "100%"},
+  "test_credentials": "admin@noc.local / Admin@123 (used)",
+  "seed_data_creation": "Created 4 TEST_CustClose_* tickets via API during tests (each was processed + resolved). Existing demo ticket TCK-20260810-0002 (fd93dfdd-1ad3-4d98-9776-c23495340b86) used for history-page UI verification.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Backend pytest at /app/backend/tests/test_closing_resume.py covers: settings persist main_group + send_closing_resume, closing_resume log fires on close with correct target/message/history_url, does NOT fire when toggle OFF, close endpoint returns 200 SELESAI even when main_group empty, resolve validation regression. Frontend: /settings/notifications/gateway exposes wa-maingroup-input + wa-closing-resume-switch + notif-save-btn; /crm/ticket/{id}/history exposes ticket-history-page, history-ticket-number, history-timeline, history-back-btn, history-doc-gallery; auth-redirect-back via ProtectedRoute state.from -> Login.jsx works. Mobile @390px shows no horizontal overflow (scrollWidth == clientWidth). Notification settings have been reset to enabled=false, send_closing_resume=false, main_group='' to prevent unintended sends.",
+  "detailed_results": {
+    "backend": {
+      "test_settings_persist_new_fields": "PASS - main_group and send_closing_resume persist; token_configured=true after saving DUMMYTOKEN",
+      "test_closing_resume_fires_on_close": "PASS - closing_resume log row created for new ticket with template_key='closing_resume_main', target='12036399@g.us', message contains '✅ RESUME PENYELESAIAN TICKET', ticket_number, and /crm/ticket/{id}/history URL. Ticket status=SELESAI (no rollback despite failed provider send).",
+      "test_closing_resume_not_fired_when_off": "PASS - no closing_resume log created when send_closing_resume=false; ticket still SELESAI",
+      "test_close_still_succeeds_when_main_group_empty": "PASS - resolve returns 200 SELESAI even when main_group is empty",
+      "test_resolve_requires_final_solution": "PASS - resolve returns 422 when required fields missing (regression preserved)",
+      "test_zzz_reset_settings": "PASS - settings reset to safe defaults"
+    },
+    "frontend": {
+      "auth_redirect_unauthenticated": "PASS - visiting /crm/ticket/{id}/history unauthenticated redirects to /login",
+      "login_redirect_back_to_history": "PASS - after admin login, URL returns to the same /crm/ticket/{id}/history",
+      "history_page_render": "PASS - ticket-history-page, history-ticket-number (TCK-20260810-0002), timeline, back-btn, Waktu & Durasi + Response/Execution/Downtime/Total Handling + Dokumentasi Pekerjaan all visible",
+      "history_back_button": "PASS - navigates back to /crm/tickets/{id}",
+      "settings_gateway_ui": "PASS - route /settings/notifications/gateway; wa-maingroup-input + wa-closing-resume-switch present; values persist after Save + reload",
+      "mobile_390px_no_overflow": "PASS - scrollWidth == clientWidth (390); single-column stacking observed in screenshot"
+    }
+  }
+}

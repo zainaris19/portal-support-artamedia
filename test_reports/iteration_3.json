@@ -1,0 +1,22 @@
+{
+  "summary": "VSOL V1600G0-B (READ-ONLY, GPON, SSH) integration verified end-to-end without touching real hardware. 12/12 pytest tests pass (adapter parsing via FakeTransport, credential-leak safety, catalog, device lifecycle graceful behaviour, provisioning refusal on VSOL, ZTE C320 regression). Frontend Add-OLT form correctly switches to SSH/port 22 with Enable Password visible when VSOL V1600G0-B is chosen; ZTE C320 still Telnet/port 23. OLT Detail page correctly HIDES Authorize button and Provisioning Log tab for VSOL, and still SHOWS them for ZTE. All test devices were cleaned up.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_vsol_adapter.py",
+    "/app/test_reports/pytest/vsol_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "parse_running_config_safe uses a keyword deny-list ('password','shared-key','secret','psk','acs','key ') to skip credential lines — comprehensive for known VSOL running-config lines. Consider also blocking 'community' (SNMP) and 'wpa' variants as future OLT firmware may add them.",
+    "VsolV1600G0BAdapter.get_onu_running_config wraps commands with 'configure terminal' + 'interface gpon <port>' + 'end'. Ensure the SSH transport actually returns from config-mode cleanly; on a real box, an unexpected error mid-script may leave the CLI in config mode across sessions. Fine for now since each session logs in fresh.",
+    "olt_management._prov_result maps UNSUPPORTED->HTTP 400 with message 'Adapter ini belum mendukung provisioning'. This correctly refuses VSOL provisioning without duplicating capability checks in each endpoint."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "100% (12/12)", "frontend": "100% (Add-OLT form + detail gating both correct)"},
+  "test_credentials": "admin@noc.local / Admin@123 (from /app/memory/test_credentials.md)",
+  "seed_data_creation": "All test OLTs (TEST_UI_VSOL, TEST_UI_ZTE, TEST_OLT_VSOL, TEST_OLT_ZTE_reg) are ephemeral and deleted at teardown of each test/fixture.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Backend regression suite for VSOL/ZTE: `pytest /app/backend/tests/test_vsol_adapter.py` (12 tests, ~10s). Uses FakeTransport in-process for parsers; API tests exercise catalog, lifecycle POST/GET/DELETE, poll (graceful unreachable), provisioning refusal for VSOL, and a ZTE C320 dry-run authorize regression. No real OLT reachability needed."
+}

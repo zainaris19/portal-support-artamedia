@@ -1,0 +1,22 @@
+{
+  "summary": "Verified OLT provisioning iteration (2 requested changes): (1) /settings/integrations/olt route now renders 'OLT Integrations' page with OLT devices table AND new Provisioning card (toggle + profiles). (2) OLT Management provisioning UI works end-to-end via dry-run/Preview. Backend: 9/9 pytest tests PASS covering provision settings GET/PUT+persistence, profile CRUD, authorize/reboot/rename/delete dry-run (returns ok=true + non-empty ZTE C320 CLI commands), 403 gate when disabled, and teknisi RBAC block. Frontend: login OK, sidebar 'Settings → Integrations · OLT' navigates to /settings/integrations/olt and renders (no blank screen); olt-prov-toggle toggles and persists (PUT /api/olt/provision/settings success toast shown); Add Profile sheet opens (olt-prof-form) with name/template/save testids, save creates row (data-testid^='olt-prof-row-') and delete removes it; on OLT detail page (created TEST_UI_OLT2 via API for verification) the 'Provisioning Log' tab (olt-tab-audit) is present, Unconfigured ONU tab shows 'Authorize ONU (Manual)' (olt-authorize-open) which opens olt-authorize-sheet with PON/ONU ID/SN/ONU Type/VLAN/Name/TCONT/Service Profile/Customer inputs; Preview (authz-preview) triggers backend dry-run and renders CLI in prov-commands: 'configure terminal / interface gpon-olt_1/1/1 / onu 5 type ZTE-F660 sn ZTEGC12345678 / ... service-port 1 vport 1 user-vlan 100 vlan 100 / end'. Unreachable status on detail page is expected (no real device). All test-created OLTs/profiles cleaned up.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_olt_provisioning.py",
+    "/app/test_reports/pytest/olt_provisioning.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "olt_management.py is ~850 lines; consider splitting the router build into read/provision sub-modules for maintainability.",
+    "Provisioning gate default = enabled is fine but ensure onboarding docs mention it; audit log has no retention policy — could grow unbounded.",
+    "Non-dry-run write paths still return 200 with ok=false on telnet timeouts (documented behaviour); consider 502 for consistency with onu_detail path."
+  ],
+  "updated_files": ["/app/backend/tests/test_olt_provisioning.py"],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "test_credentials": "admin@noc.local / Admin@123 (verified); teknisi@noc.local / Teknisi@123 (verified: cannot access provisioning, 401/403).",
+  "seed_data_creation": "None. Created ephemeral TEST_UI_OLT / TEST_UI_OLT2 devices and TEST_profile_1 profile during testing, all deleted afterward.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Backend URL from frontend/.env; JWT in localStorage as 'noc_token'. Auth response returns 'access_token' (fallback 'token'). Provisioning endpoints under /api/olt/provision/* (settings, profiles, audit) and /api/olt/{id}/{provision/authorize|onu/{index}/reboot|rename|provision}. URL-encode ONU index (1/1/1:5 -> 1%2F1%2F1:5). Default provisioning gate = enabled=true. ZTE C320 dry-run CLI generation verified: authorize renders 'onu {onu_id} type {onu_type} sn {sn}' + service-port with VLAN; reboot/rename/delete also emit CLI. RBAC: PROV_WRITE=admin/supervisor/engineer; PROV_DELETE=admin/supervisor; teknisi is BLOCKED. Detail page shows 'Unreachable' when host is fake — expected. Reusable regression test: /app/backend/tests/test_olt_provisioning.py."
+}

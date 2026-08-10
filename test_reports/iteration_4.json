@@ -1,0 +1,22 @@
+{
+  "summary": "VSOL OLT provisioning enablement fully verified. Backend: 9/9 pytest tests pass in /app/backend/tests/test_vsol_provisioning.py — VSOL now reports supports_provisioning=true on both GET /api/olt and GET /api/olt/{id}/summary; VSOL Preview endpoints (authorize/reboot/rename/delete) all return ok=true dry_run=true with the correct VSOL CLI ('interface gpon 0/1', 'onu add 4 sn VSOL...', 'onu reset 4', 'onu 4 description X', 'onu del 4'); teknisi role is blocked (401/403); ZTE regression preserved (still supports_provisioning=true, still emits gpon-olt_/gpon-onu_ style, no VSOL 'interface gpon 1/1/1' leak). Frontend: VSOL OLT detail now shows Provisioning Log tab and Unconfigured ONU tab; olt-authorize-open button visible; Authorize sheet opens; Preview button renders CLI in [data-testid=prov-commands] containing 'interface gpon 0/1' and 'onu add 4 sn VSOL...'. ZTE OLT detail regression: Authorize sheet Preview still renders ZTE-style CLI ('configure terminal / interface gpon-olt_1/1/1 / onu 5 sn ZTEGC.../ interface gpon-onu_1/1/1:5 / end'). No bugs found.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_vsol_provisioning.py",
+    "/app/test_reports/pytest/vsol_prov_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "VSOL adapter's built-in sequence uses 'end' before 'configure terminal' as a safety flush — visible in Preview output. Harmless but non-standard; consider dropping the leading 'end' to keep the preview cleaner for operators.",
+    "SSHTransport auto-confirms yes/no prompts (VSOL only) — good for 'onu add' which prompts confirmation; ensure the prompt regex is anchored so it does not accidentally match config content containing 'y/n' substrings.",
+    "provWritable in OLTDetail.jsx = provEnabled && olt.supports_provisioning — correct vendor-agnostic gate. No change needed."
+  ],
+  "updated_files": ["/app/backend/tests/test_vsol_provisioning.py"],
+  "success_rate": {"backend": "100% (9/9)", "frontend": "100% (VSOL write UI + ZTE regression preview both work)"},
+  "test_credentials": "admin@noc.local / Admin@123 ; teknisi@noc.local / Teknisi@123 (from /app/memory/test_credentials.md)",
+  "seed_data_creation": "OLT-VSOL-Test and OLT-ZTE-Test were pre-seeded and reused (not created by this test). Test does not delete them.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Regression suite: `pytest /app/backend/tests/test_vsol_provisioning.py -v` (9 tests, ~3s). Uses OLT-VSOL-Test + OLT-ZTE-Test seeded devices; if missing, fixture will create them with enabled=false. All checks are dry_run — no real OLT hardware needed. Existing test file /app/backend/tests/test_vsol_adapter.py from iter_3 covered VSOL as read-only and should now be reviewed: any assertion that VSOL provisioning refuses with 400 must be updated because provisioning is now supported."
+}

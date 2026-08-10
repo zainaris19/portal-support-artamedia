@@ -1,0 +1,108 @@
+{
+  "app_name": "NOC Support System",
+  "theme_strategy": "Persisted Light/Dark mode with toggle in header. Professional, high-density enterprise dashboard.",
+  "typography": {
+    "headings_font": "Manrope, sans-serif",
+    "body_font": "IBM Plex Sans, sans-serif",
+    "monospace_font": "JetBrains Mono, monospace",
+    "rules": {
+      "h1": "text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100",
+      "h2": "text-xl sm:text-2xl font-semibold tracking-tight text-slate-800 dark:text-slate-200",
+      "h3": "text-lg sm:text-xl font-medium text-slate-800 dark:text-slate-200",
+      "body": "text-sm sm:text-base leading-relaxed text-slate-600 dark:text-slate-400",
+      "labels": "text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400",
+      "banned_fonts": [
+        "Inter",
+        "Roboto",
+        "Open Sans",
+        "Space Grotesk"
+      ]
+    }
+  },
+  "colors": {
+    "light_mode": {
+      "background": "#F8FAFC",
+      "surface": "#FFFFFF",
+      "primary": "#3B82F6",
+      "primary_hover": "#2563EB",
+      "text_main": "#0F172A",
+      "text_muted": "#64748B",
+      "border": "#E2E8F0"
+    },
+    "dark_mode": {
+      "background": "#0F172A",
+      "surface": "#1E293B",
+      "primary": "#3B82F6",
+      "primary_hover": "#60A5FA",
+      "text_main": "#F8FAFC",
+      "text_muted": "#94A3B8",
+      "border": "#334155"
+    },
+    "status_badges": {
+      "open": "bg-rose-100 text-rose-700 dark:bg-rose-500/10 dark:text-rose-400 dark:border dark:border-rose-500/20",
+      "monitoring": "bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400 dark:border dark:border-amber-500/20",
+      "pending": "bg-orange-100 text-orange-700 dark:bg-orange-500/10 dark:text-orange-400 dark:border dark:border-orange-500/20",
+      "resolved": "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border dark:border-emerald-500/20"
+    },
+    "prohibited": [
+      "Neon colors",
+      "Glow effects",
+      "Excessive gradients",
+      "Teal Green (#1B93A4)"
+    ]
+  },
+  "visual_enhancers": {
+    "surfaces": "Flat solid backgrounds. NO glassmorphism to ensure data legibility. NO shadows in dark mode. Minimal soft shadows (shadow-sm) in light mode.",
+    "borders": "1px solid borders using the defined border colors. Crisp, structural edges.",
+    "radius": "Subtle roundness. Use rounded-md (6px) or rounded-lg (8px) for cards, buttons, and inputs. Avoid full pill shapes except for small status badges."
+  },
+  "layouts": {
+    "global": "Collapsible Sidebar on left. Top Header. Main content area. Mobile-first responsive grid structure.",
+    "header": "Contains global search, notifications bell, theme toggle, and user profile dropdown. Must have solid background and 1px bottom border. NO transparent backgrounds.",
+    "sidebar": "Solid background. Collapsible state shows only icons. Highlight active route with subtle primary tint.",
+    "dashboard_grid": "High Density Grid (Mode B). grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 or gap-6. Use clickable stat cards at the top level.",
+    "spacing": "Use Tailwind p-4, p-6. Ensure containers with borders have adequate internal padding."
+  },
+  "components": {
+    "forms_and_inputs": "Shadcn UI based. Use Drawers (Sheets) or Modals (Dialogs) for CRUD forms to avoid navigating away from main tables.",
+    "tables": "Modern responsive tables (Shadcn Table). Sticky headers, hover rows, pagination, and action dropdowns on the right side. Include Skeleton loaders for data fetching states.",
+    "buttons": "Standard rectangular with rounded-md. Avoid excessive padding. Clear hover/active states.",
+    "toasts": "Use Sonner for toast notifications. Position bottom-right.",
+    "empty_states": "Centered soft text with a muted icon and a primary action button.",
+    "tabs": "Use Shadcn Tabs for Customer Categories (Broadband, Dedicated, etc.) and Document Types."
+  },
+  "motion": {
+    "rules": "Minimalist and professional. transition-colors duration-200 for hover states. Simple fade-in for modals/drawers. Respect prefers-reduced-motion.",
+    "banned": [
+      "Parallax",
+      "Heavy 3D elements",
+      "Continuous spinning/pulsing (unless explicit loading spinner)",
+      "Bouncy/spring physics"
+    ]
+  },
+  "accessibility": {
+    "contrast": "Ensure APCA/WCAG AA compliance. Dark mode text must not be pure white (use #F8FAFC).",
+    "testing": "All interactive and key informational elements MUST include a data-testid attribute (e.g., data-testid='login-submit-button', data-testid='theme-toggle-button').",
+    "focus": "Clear focus rings (focus:ring-2 focus:ring-primary focus:ring-offset-1) on all inputs/buttons."
+  },
+  "icons": {
+    "library": "lucide-react",
+    "style": "Stroke width 1.5 or 2. Clean, professional look."
+  },
+  "instructions_to_main_agent": [
+    "Create files in .js and .jsx formats only. DO NOT use .tsx or TypeScript.",
+    "Implement a fully functional Light/Dark theme toggle using Tailwind's 'dark' class and save preference in localStorage.",
+    "The login page should be elegant and simple, using a centered card or professional split layout without consumer marketing fluff.",
+    "Implement JWT logic in the frontend with context or standard state management.",
+    "Mock the initial NOC data (Customers, Documents, Logs, Stats) to populate the dashboard and tables based on the requested features.",
+    "Implement file upload logic simulating Base64 conversion before sending to the backend."
+  ],
+  "universal_guidelines_for_main_agent": [
+    "Do not apply `transition: all` globally.",
+    "Do not use `.App { text-align: center; }`.",
+    "Never use transparent backgrounds for headers, dropdowns, or overlays. Always use solid colors in this enterprise app.",
+    "Avoid generic AI slop. Stick strictly to the defined color palette and flat enterprise design. Emphasize readability and information density.",
+    "Ensure all tables scroll horizontally on small screens without breaking the overall layout.",
+    "Use Shadcn primitives heavily but strip any styling that conflicts with the enterprise NOC requirements."
+  ]
+}
