@@ -390,7 +390,15 @@ async def _save_upload(f: UploadFile, ticket_id: str) -> dict:
     with open(path, "wb") as w:
         w.write(data)
     mime = f.content_type or mimetypes.guess_type(orig)[0] or "application/octet-stream"
-    file_type = "image" if mime.startswith("image/") else "document"
+    # Browsers/mobile cameras sometimes send 'application/octet-stream' — fall back
+    # to the file extension so images are not misclassified as documents (which
+    # would break thumbnail/preview rendering on the tracking & history pages).
+    if not mime.startswith("image/") and mime in ("application/octet-stream", ""):
+        guessed = mimetypes.guess_type(orig)[0]
+        if guessed:
+            mime = guessed
+    is_image = mime.startswith("image/") or ext in {".jpg", ".jpeg", ".png", ".webp"}
+    file_type = "image" if is_image else "document"
     return {
         "id": file_id,
         "file_name": safe_name,

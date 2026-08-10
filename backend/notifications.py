@@ -699,23 +699,18 @@ async def build_public_tracking(db, token: str) -> Dict[str, Any]:
 # Closing Resume → Main / Management group (CRM enhancement)
 # ---------------------------------------------------------------------------
 CLOSING_RESUME_BODY = (
-    "✅ RESUME PENYELESAIAN TICKET\n\n"
-    "Ticket: {{ticket_number}}\n"
-    "Customer: {{customer_name}}\n"
-    "Lokasi: {{location}}\n"
-    "Kategori: {{category}}\n"
-    "Prioritas: {{priority}}\n\n"
-    "Mulai Gangguan:\n{{incident_start}}\n\n"
-    "Ticket Dibuat:\n{{created_at}}\n\n"
-    "Mulai Diproses:\n{{processing_started_at}}\n\n"
-    "Selesai:\n{{closed_at}}\n\n"
-    "Response Time:\n{{response_time}}\n\n"
-    "Execution Time:\n{{execution_time}}\n\n"
-    "Downtime:\n{{downtime}}\n\n"
-    "Total Handling:\n{{total_handling}}\n\n"
-    "Troubleshooter:\n{{troubleshooter}}\n\n"
-    "Status:\nSELESAI\n\n"
-    "🔗 History & Dokumentasi:\n{{history_url}}"
+    "✅ RESUME TICKET SELESAI\n"
+    "🎫 Ticket: {{ticket_number}}\n"
+    "👤 Customer: {{customer_name}}\n"
+    "📍 Lokasi: {{location}}\n"
+    "⚠️ Gangguan: {{category}}\n"
+    "📝 Dibuat oleh: {{created_by}}\n"
+    "🛠 Ditangani oleh: {{final_troubleshooter}}\n"
+    "🔎 Penyebab:\n{{root_cause}}\n"
+    "🔧 Penyelesaian:\n{{resolution}}\n"
+    "✅ Status: SELESAI\n"
+    "⏱ Total Handling: {{total_handling_time}}\n"
+    "🔗 History & Dokumentasi:\n{{ticket_history_url}}"
 )
 
 
@@ -744,17 +739,12 @@ async def notify_closing_resume(db, ticket: Dict[str, Any]) -> None:
             "customer_name": ticket.get("customer_name") or "-",
             "location": ticket.get("location") or ticket.get("site") or "-",
             "category": ticket.get("category_name") or ticket.get("category") or "-",
-            "priority": ticket.get("priority") or "-",
-            "incident_start": _fmt_dt(ticket.get("outage_started_at") or ticket.get("incident_started_at")),
-            "created_at": _fmt_dt(ticket.get("created_at")),
-            "processing_started_at": _fmt_dt(ticket.get("processed_at")),
-            "closed_at": _fmt_dt(ticket.get("resolved_at") or ticket.get("closed_at")),
-            "response_time": _human_duration(ticket.get("response_time_seconds")),
-            "execution_time": _human_duration(ticket.get("execution_time_seconds")),
-            "downtime": _human_duration(ticket.get("downtime_seconds")),
-            "total_handling": _human_duration(ticket.get("total_handling_seconds")),
-            "troubleshooter": ticket.get("troubleshooter_name") or "-",
-            "history_url": history_url,
+            "created_by": ticket.get("created_by_name") or "-",
+            "final_troubleshooter": ticket.get("troubleshooter_name") or "-",
+            "root_cause": ticket.get("root_cause") or "-",
+            "resolution": ticket.get("final_solution") or ticket.get("action_taken") or "-",
+            "total_handling_time": _human_duration(ticket.get("total_handling_seconds")),
+            "ticket_history_url": history_url,
         }
         message = render_template(CLOSING_RESUME_BODY, ctx)
         await send_message(

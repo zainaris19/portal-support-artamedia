@@ -19,6 +19,15 @@ function fmt(iso) {
   catch { return iso; }
 }
 
+// Robust image detection: trust file_type, but fall back to mime/extension so
+// photos uploaded with a generic content-type still render as previews.
+function isImg(f) {
+  if (!f) return false;
+  if (f.file_type === 'image') return true;
+  if ((f.mime_type || '').startsWith('image/')) return true;
+  return /\.(jpe?g|png|webp|gif|heic|heif)$/i.test(f.original_file_name || '');
+}
+
 export default function PublicTracking() {
   const { token } = useParams();
   const [data, setData] = useState(null);
@@ -60,7 +69,7 @@ export default function PublicTracking() {
   const docsUrl = (u) => `${process.env.REACT_APP_BACKEND_URL}${u}`;
 
   return (
-    <div style={pageBg} className="min-h-screen" data-testid="public-tracking-page">
+    <div style={pageBg} className="h-screen overflow-y-auto" data-testid="public-tracking-page">
       {/* Header */}
       <div className="bg-white border-b border-slate-200">
         <div className="max-w-3xl mx-auto px-5 py-5 flex items-center gap-3">
@@ -150,7 +159,7 @@ export default function PublicTracking() {
                   {p.files && p.files.length > 0 && (
                     <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 mt-3" data-testid={`track-progress-photos-${i}`}>
                       {p.files.map((f) => (
-                        f.file_type === 'image' ? (
+                        isImg(f) ? (
                           <button key={f.id} onClick={() => setLightbox(docsUrl(f.url))} className="group relative rounded-lg overflow-hidden border border-slate-200 aspect-square bg-slate-100">
                             <img src={docsUrl(f.url)} alt={f.original_file_name} className="w-full h-full object-cover group-hover:scale-105 transition-transform" loading="lazy" />
                           </button>
@@ -175,7 +184,7 @@ export default function PublicTracking() {
           {data.documentation.length === 0 ? <Empty text="Belum ada dokumentasi." /> : (
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3" data-testid="track-documentation">
               {data.documentation.map((f) => (
-                f.file_type === 'image' ? (
+                isImg(f) ? (
                   <button key={f.id} onClick={() => setLightbox(docsUrl(f.url))} className="group relative rounded-xl overflow-hidden border border-slate-200 aspect-square bg-slate-100">
                     <img src={docsUrl(f.url)} alt={f.original_file_name} className="w-full h-full object-cover group-hover:scale-105 transition-transform" loading="lazy" />
                     <span className="absolute bottom-0 inset-x-0 text-[10px] text-white bg-black/50 px-2 py-1 truncate">{f.description || f.evidence_type}</span>

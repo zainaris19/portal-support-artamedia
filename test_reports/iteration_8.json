@@ -1,0 +1,27 @@
+{
+  "summary": "Iteration 8 — verified 3 targeted CRM changes: (1) new closing-resume WhatsApp template + placeholders, (2) octet-stream image classification fix, (3) PublicTracking page scroll + image rendering + lightbox. All 7 backend pytest tests PASS. Frontend Playwright verifies public /track/{token} loads, all sections render, both desktop (1920x800) and mobile (390x844) scroll to the footer text, documentation & progress images render with naturalWidth>0, and photo click opens/closes a large lightbox overlay. Cleaned up all test tickets from Mongo. notification_settings left enabled + send_closing_resume=true per user request.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_iter8_closing_resume_and_files.py",
+    "/app/test_reports/pytest/iter8_results.xml",
+    "/app/tests/_setup_track_ticket.py"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "PublicTracking.jsx uses className='h-screen overflow-y-auto' as an internal scroll container to bypass the global 'html, body, #root { overflow:hidden }' in index.css lines 69-72. This is a per-page workaround; consider scoping the global overflow:hidden only to the authenticated /app shell so public pages don't need this local override.",
+    "In notifications.py CLOSING_RESUME_BODY, root_cause and final_solution are placed on separate lines after their labels (via '\\n{{root_cause}}'). If those fields ever contain empty '-' the message will show a bare '-' line — acceptable but worth noting.",
+    "_save_upload octet-stream fallback (crm_helpdesk.py) correctly re-classifies by extension; nicely defensive against mobile camera uploads."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter8_closing_resume_and_files.py (new)",
+    "/app/tests/_setup_track_ticket.py (new — helper to seed a track ticket for the UI test)"
+  ],
+  "success_rate": {"backend": "100% (7/7)", "frontend": "100% (all assertions passed)"},
+  "test_credentials": "admin@noc.local / Admin@123",
+  "seed_data_creation": "Test tickets were created during backend + UI setup and REMOVED from Mongo at the end (helpdesk_tickets, helpdesk_ticket_files, notification_logs, helpdesk_ticket_progress, helpdesk_ticket_tokens). DB left clean.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Iter8 verified: (a) closing_resume message body matches new template exactly — first line '✅ RESUME TICKET SELESAI', all 11 required labels present, no old labels ('RESUME PENYELESAIAN TICKET', 'Response Time', 'Execution Time', 'Downtime', '/crm/ticket/'), no unfilled {braces}, root_cause & final_solution appear on the line after their label, and a public /track/<token> URL is embedded. Target = main_group 120363408836731773@g.us, channel='internal'. (b) Uploading images as content-type='application/octet-stream' (mobile camera) now saves file_type='image' via extension fallback. (c) Public GET /api/track/{token} works with NO auth: 'documentation' contains both CUSTOMER_INITIAL_EVIDENCE + COMPLETION_EVIDENCE (file_type='image'); progress[*].files contain their photos; every url is '/api/track/{token}/files/{fid}/content'; fetching that URL without auth returns 200 image/*. (d) Regression created/assigned/resolved lifecycle logs still go to default_group 120363430088957368@g.us. (e) Public tracking page scrolls to bottom footer on both desktop (1920x800) and mobile (390x844); lightbox overlay opens on doc image click and closes on background click.",
+  "rca of the issue": "Prior to fixes: (1) old template used 'RESUME PENYELESAIAN TICKET' and linked to protected /crm/ticket/ path — unusable by external WA recipients. Fixed by new CLOSING_RESUME_BODY constant + ensure_tracking_token()+/track/{token} public link. (2) Mobile browsers upload photos with content-type 'application/octet-stream'; the mime check saved file_type='document' → broke image previews. Fixed by extension fallback in _save_upload. (3) Global CSS 'html, body, #root { overflow:hidden }' clipped the public tracking page. Fixed by wrapping PublicTracking in its own 'h-screen overflow-y-auto' scroller, plus isImg(f) helper (checks file_type|mime_type|filename ext) so images always render even when file_type field is missing, and docsUrl(u) prefixes REACT_APP_BACKEND_URL for absolute file URLs."
+}
