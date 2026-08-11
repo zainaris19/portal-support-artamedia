@@ -72,6 +72,11 @@ WorkStage = Literal[
 EvidenceType = Literal[
     "CUSTOMER_INITIAL_EVIDENCE", "TECHNICIAN_PROGRESS", "COMPLETION_EVIDENCE", "GENERAL_ATTACHMENT",
 ]
+# Jenis tiket. GANGGUAN = flow existing (default & backward-compatible untuk tiket lama
+# yang belum punya field ticket_type). PSB = aktivasi pelanggan baru. MULTIGANGGUAN =
+# satu gangguan berdampak ke banyak pelanggan.
+TicketType = Literal["GANGGUAN", "PSB", "MULTIGANGGUAN"]
+AffectedStatus = Literal["Down", "Restored"]
 
 
 # ----------------------------------------------------------------------------
@@ -142,8 +147,17 @@ def _make_audit(user: dict, action: str, meta: Optional[dict] = None) -> dict:
 # ----------------------------------------------------------------------------
 # Pydantic models
 # ----------------------------------------------------------------------------
+class AffectedCustomerIn(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    customer_id: Optional[str] = None
+    customer_name: str
+    status: AffectedStatus = "Down"
+    note: str = ""
+
+
 class TicketCreate(BaseModel):
     model_config = ConfigDict(extra="ignore")
+    ticket_type: TicketType = "GANGGUAN"
     customer_id: Optional[str] = None
     customer_name: str
     location: str = ""
@@ -156,6 +170,13 @@ class TicketCreate(BaseModel):
     pic_contact: str = ""
     report_source: ReportSource = "Telepon"
     initial_evidence_note: str = ""
+    # PSB (aktivasi pelanggan baru) — hanya relevan bila ticket_type == PSB
+    psb_service_type: Optional[str] = None  # "Broadband FTTH" | "Dedicated"
+    psb_package: str = ""
+    psb_install_address: str = ""
+    # Multigangguan — hanya relevan bila ticket_type == MULTIGANGGUAN
+    mg_cause: str = ""
+    affected_customers: List[AffectedCustomerIn] = Field(default_factory=list)
 
 
 class TicketUpdate(BaseModel):
@@ -204,6 +225,20 @@ class ResolveIn(BaseModel):
     closing_notes: str = ""
     completion_file_ids: List[str] = Field(default_factory=list)
     override_reason: Optional[str] = None  # jika supervisor/admin skip completion evidence
+
+
+class AffectedStatusIn(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    status: AffectedStatus
+    note: Optional[str] = None
+
+
+class AffectedAddIn(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    customer_id: Optional[str] = None
+    customer_name: str
+    status: AffectedStatus = "Down"
+    note: str = ""
 
 
 class CategoryIn(BaseModel):
@@ -472,6 +507,7 @@ def build_crm_helpdesk_router(get_current_user, get_db):
         q: Optional[str] = None,
         status: Optional[TicketStatus] = None,
         priority: Optional[Priority] = None,
+        ticket_type: Optional[TicketType] = None,
         customer_id: Optional[str] = None,
         troubleshooter_id: Optional[str] = None,
         page: int = 1,
@@ -484,6 +520,14 @@ def build_crm_helpdesk_router(get_current_user, get_db):
             query["status"] = status
         if priority:
             query["priority"] = priority
+        if ticket_type:
+            if ticket_type == "GANGGUAN":
+                # Legacy tickets have no ticket_type field → treat as GANGGUAN.
+                query.setdefault("$and", []).append(
+                    {"$or": [{"ticket_type": "GANGGUAN"}, {"ticket_type": {"$exists": False}}, {"ticket_type": None}]}
+                )
+            else:
+                query["ticket_type"] = ticket_type
         if customer_id:
             query["customer_id"] = customer_id
         if troubleshooter_id:
@@ -566,6 +610,22 @@ def build_crm_helpdesk_router(get_current_user, get_db):
             "pic_contact": body.pic_contact,
             "report_source": body.report_source,
             "initial_evidence_note": body.initial_evidence_note,
+            "ticket_type": body.ticket_type,
+            "psb_service_type": body.psb_service_type,
+            "psb_package": body.psb_package,
+            "psb_install_address": body.psb_install_address,
+            "mg_cause": body.mg_cause,
+            "affected_customers": [
+                {
+                    "id": new_id(),
+                    "customer_id": c.customer_id,
+                    "customer_name": c.customer_name,
+                    "status": c.status,
+                    "restored_at": now_iso() if c.status == "Restored" else None,
+                    "note": c.note,
+                }
+                for c in (body.affected_customers or [])
+            ],
             "created_by_id": a["id"],
             "created_by_name": a["name"],
             "created_at": now_iso(),
@@ -810,6 +870,17 @@ def build_crm_helpdesk_router(get_current_user, get_db):
         if t["status"] != "DIPROSES":
             raise HTTPException(status_code=400, detail="Ticket harus dalam status DIPROSES untuk diselesaikan")
 
+        # Multigangguan: tidak boleh SELESAI sampai SEMUA pelanggan terdampak Restored.
+        if t.get("ticket_type") == "MULTIGANGGUAN":
+            ac = t.get("affected_customers") or []
+            not_restored = [c for c in ac if c.get("status") != "Restored"]
+            if not ac or not_restored:
+                done = len(ac) - len(not_restored)
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Semua pelanggan terdampak harus berstatus Restored dulu ({done}/{len(ac)} restored).",
+                )
+
         # Check completion evidence requirement
         completion_files = await db.helpdesk_ticket_files.count_documents({
             "ticket_id": tid, "evidence_type": "COMPLETION_EVIDENCE",
@@ -896,6 +967,66 @@ def build_crm_helpdesk_router(get_current_user, get_db):
             raise HTTPException(status_code=400, detail="Ticket bukan dalam status SELESAI")
         audit = _make_audit(user, "ticket_reopened")
         await db.helpdesk_tickets.update_one({"id": tid}, {"$set": {"status": "DIPROSES", "updated_at": now_iso()}, "$push": {"audit_log": audit}})
+        return await _get_ticket_or_404(db, tid)
+
+    # ---------------- Multigangguan: pelanggan terdampak ----------------
+    @router.post("/tickets/{tid}/affected")
+    async def add_affected(tid: str, body: AffectedAddIn, user: dict = Depends(get_current_user)):
+        _require(user, NOC)
+        db = get_db()
+        t = await _get_ticket_or_404(db, tid)
+        if t.get("ticket_type") != "MULTIGANGGUAN":
+            raise HTTPException(status_code=400, detail="Ticket ini bukan Multigangguan")
+        entry = {
+            "id": new_id(),
+            "customer_id": body.customer_id,
+            "customer_name": body.customer_name,
+            "status": body.status,
+            "restored_at": now_iso() if body.status == "Restored" else None,
+            "note": body.note,
+        }
+        audit = _make_audit(user, "affected_added", {"customer": body.customer_name})
+        await db.helpdesk_tickets.update_one(
+            {"id": tid},
+            {"$push": {"affected_customers": entry, "audit_log": audit}, "$set": {"updated_at": now_iso()}},
+        )
+        return await _get_ticket_or_404(db, tid)
+
+    @router.patch("/tickets/{tid}/affected/{acid}")
+    async def update_affected(tid: str, acid: str, body: AffectedStatusIn, user: dict = Depends(get_current_user)):
+        _require(user, NOC)
+        db = get_db()
+        t = await _get_ticket_or_404(db, tid)
+        if t.get("ticket_type") != "MULTIGANGGUAN":
+            raise HTTPException(status_code=400, detail="Ticket ini bukan Multigangguan")
+        set_fields = {
+            "affected_customers.$.status": body.status,
+            "affected_customers.$.restored_at": now_iso() if body.status == "Restored" else None,
+            "updated_at": now_iso(),
+        }
+        if body.note is not None:
+            set_fields["affected_customers.$.note"] = body.note
+        audit = _make_audit(user, "affected_status_changed", {"affected_id": acid, "status": body.status})
+        r = await db.helpdesk_tickets.update_one(
+            {"id": tid, "affected_customers.id": acid},
+            {"$set": set_fields, "$push": {"audit_log": audit}},
+        )
+        if r.matched_count == 0:
+            raise HTTPException(status_code=404, detail="Pelanggan terdampak tidak ditemukan")
+        return await _get_ticket_or_404(db, tid)
+
+    @router.delete("/tickets/{tid}/affected/{acid}")
+    async def remove_affected(tid: str, acid: str, user: dict = Depends(get_current_user)):
+        _require(user, NOC)
+        db = get_db()
+        t = await _get_ticket_or_404(db, tid)
+        if t.get("ticket_type") != "MULTIGANGGUAN":
+            raise HTTPException(status_code=400, detail="Ticket ini bukan Multigangguan")
+        audit = _make_audit(user, "affected_removed", {"affected_id": acid})
+        await db.helpdesk_tickets.update_one(
+            {"id": tid},
+            {"$pull": {"affected_customers": {"id": acid}}, "$push": {"audit_log": audit}, "$set": {"updated_at": now_iso()}},
+        )
         return await _get_ticket_or_404(db, tid)
 
     # ---------------- Files ----------------

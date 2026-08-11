@@ -9,10 +9,11 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
-import { CheckCircle2, TicketPlus, Users, Info, MessageSquare, PhoneCall, Mail, Radar, Building, HelpCircle } from 'lucide-react';
+import { CheckCircle2, TicketPlus, Users, Info, MessageSquare, PhoneCall, Mail, Radar, Building, HelpCircle, Trash2 } from 'lucide-react';
 import Breadcrumb from '@/components/Breadcrumb';
 import api, { formatApiError } from '@/lib/api';
-import { PRIORITIES, REPORT_SOURCES } from './helpdeskUtils';
+import { cn } from '@/lib/utils';
+import { PRIORITIES, REPORT_SOURCES, TICKET_TYPES, TICKET_TYPE_LABEL, PSB_SERVICE_TYPES } from './helpdeskUtils';
 import UploadZone from './components/UploadZone';
 import { useAuth } from '@/context/AuthContext';
 
@@ -22,6 +23,7 @@ const REPORT_ICONS = {
 };
 
 const EMPTY = {
+  ticket_type: 'GANGGUAN',
   customer_id: null, customer_name: '',
   location: '',
   category_id: null, category_name: '',
@@ -31,6 +33,10 @@ const EMPTY = {
   pic_name: '', pic_contact: '',
   report_source: 'Telepon',
   initial_evidence_note: '',
+  // PSB
+  psb_service_type: 'Broadband FTTH', psb_package: '', psb_install_address: '',
+  // Multigangguan
+  mg_cause: '', affected_customers: [],
 };
 
 export default function OpenTicket() {
@@ -50,8 +56,13 @@ export default function OpenTicket() {
 
   const validate = () => {
     const e = {};
-    if (!form.customer_name?.trim()) e.customer_name = 'Nama customer wajib';
-    if (!form.description?.trim()) e.description = 'Deskripsi gangguan wajib';
+    if (!form.customer_name?.trim() && form.ticket_type !== 'MULTIGANGGUAN') e.customer_name = 'Nama customer wajib';
+    if (form.ticket_type === 'GANGGUAN' && !form.description?.trim()) e.description = 'Deskripsi gangguan wajib';
+    if (form.ticket_type === 'MULTIGANGGUAN') {
+      if (!form.description?.trim()) e.description = 'Informasi gangguan wajib';
+      if ((form.affected_customers || []).length === 0) e.affected_customers = 'Minimal 1 pelanggan terdampak';
+    }
+    if (form.ticket_type === 'PSB' && !form.psb_install_address?.trim()) e.psb_install_address = 'Alamat instalasi wajib';
     if (!form.priority) e.priority = 'Prioritas wajib';
     if (!form.report_source) e.report_source = 'Sumber laporan wajib';
     setErrors(e);
@@ -138,6 +149,59 @@ export default function OpenTicket() {
 
       <Card className="border-border">
         <CardContent className="p-4 sm:p-5 space-y-4">
+          <div className="space-y-1.5">
+            <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Jenis Tiket</Label>
+            <div className="flex flex-wrap gap-2" data-testid="open-ticket-type">
+              {TICKET_TYPES.map((tt) => (
+                <button
+                  key={tt}
+                  type="button"
+                  onClick={() => setForm({ ...form, ticket_type: tt })}
+                  data-testid={`open-ticket-type-${tt}`}
+                  className={cn(
+                    'px-3.5 py-1.5 rounded-md border text-sm font-semibold transition-colors',
+                    form.ticket_type === tt
+                      ? 'bg-primary text-primary-foreground border-primary'
+                      : 'bg-background hover:bg-accent border-border text-muted-foreground',
+                  )}
+                >
+                  {TICKET_TYPE_LABEL[tt]}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {form.ticket_type === 'PSB' && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-3" data-testid="open-psb-fields">
+              <F label="Jenis Layanan *">
+                <Select value={form.psb_service_type} onValueChange={(v) => setForm({ ...form, psb_service_type: v })}>
+                  <SelectTrigger data-testid="open-psb-service"><SelectValue /></SelectTrigger>
+                  <SelectContent>{PSB_SERVICE_TYPES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
+                </Select>
+              </F>
+              <F label="Paket / Bandwidth">
+                <Input value={form.psb_package} onChange={(e) => setForm({ ...form, psb_package: e.target.value })} placeholder="mis. 50 Mbps / Dedicated 1:1 100 Mbps" data-testid="open-psb-package" />
+              </F>
+              <F label="Alamat Instalasi *" full error={errors.psb_install_address}>
+                <Textarea rows={2} value={form.psb_install_address} onChange={(e) => setForm({ ...form, psb_install_address: e.target.value })} placeholder="Alamat lengkap lokasi pemasangan" data-testid="open-psb-address" />
+              </F>
+            </div>
+          )}
+
+          {form.ticket_type === 'MULTIGANGGUAN' && (
+            <div className="space-y-3 rounded-lg border border-violet-500/30 bg-violet-500/5 p-3" data-testid="open-mg-fields">
+              <F label="Penyebab Gangguan">
+                <Input value={form.mg_cause} onChange={(e) => setForm({ ...form, mg_cause: e.target.value })} placeholder="mis. FO Cut ruas A-B, Power OLT down" data-testid="open-mg-cause" />
+              </F>
+              <AffectedEditor
+                customers={customers}
+                value={form.affected_customers}
+                onChange={(list) => setForm({ ...form, affected_customers: list })}
+                error={errors.affected_customers}
+              />
+            </div>
+          )}
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <F label="Customer *" error={errors.customer_name}>
               <CustomerPicker
@@ -215,7 +279,7 @@ export default function OpenTicket() {
             <F label="Nomor Kontak PIC">
               <Input value={form.pic_contact} onChange={(e) => setForm({ ...form, pic_contact: e.target.value })} placeholder="+62…" data-testid="open-ticket-pic-contact" />
             </F>
-            <F label="Deskripsi Gangguan *" full error={errors.description}>
+            <F label={form.ticket_type === 'MULTIGANGGUAN' ? 'Informasi Gangguan *' : form.ticket_type === 'PSB' ? 'Catatan / Deskripsi' : 'Deskripsi Gangguan *'} full error={errors.description}>
               <Textarea
                 rows={3} value={form.description}
                 onChange={(e) => setForm({ ...form, description: e.target.value })}
@@ -307,6 +371,89 @@ function F({ label, full, error, children }) {
       <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{label}</Label>
       {children}
       {error && <div className="text-xs text-rose-600 dark:text-rose-400">{error}</div>}
+    </div>
+  );
+}
+
+function AffectedEditor({ customers, value, onChange, error }) {
+  const [manual, setManual] = useState('');
+  const [open, setOpen] = useState(false);
+  const list = value || [];
+  const addManual = () => {
+    const name = manual.trim();
+    if (!name) return;
+    onChange([...list, { customer_id: null, customer_name: name, status: 'Down' }]);
+    setManual('');
+  };
+  const addCustomer = (c) => {
+    if (!list.some((x) => x.customer_id === c.id)) {
+      onChange([...list, { customer_id: c.id, customer_name: c.company_name, status: 'Down' }]);
+    }
+    setOpen(false);
+  };
+  const remove = (i) => onChange(list.filter((_, idx) => idx !== i));
+  return (
+    <div className="space-y-2">
+      <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+        Daftar Pelanggan Terdampak * <span className="text-foreground">({list.length})</span>
+      </Label>
+      <div className="flex flex-col sm:flex-row gap-2">
+        <Popover open={open} onOpenChange={setOpen}>
+          <PopoverTrigger asChild>
+            <Button type="button" variant="outline" className="justify-between sm:w-60 h-9 font-normal" data-testid="mg-add-customer-picker">
+              <span className="text-muted-foreground">Pilih dari database…</span>
+              <Users className="w-4 h-4 opacity-60" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-[320px] p-0" align="start">
+            <Command>
+              <CommandInput placeholder="Cari nama / SID…" />
+              <CommandList className="max-h-64">
+                <CommandEmpty>Customer tidak ditemukan.</CommandEmpty>
+                <CommandGroup>
+                  {customers.map((c) => (
+                    <CommandItem key={c.id} value={`${c.company_name} ${c.sid} ${c.location || ''}`} onSelect={() => addCustomer(c)}>
+                      <div className="min-w-0 flex-1">
+                        <div className="text-sm truncate font-medium">{c.company_name}</div>
+                        <div className="text-[11px] text-muted-foreground truncate">{c.sid} · {c.location}</div>
+                      </div>
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              </CommandList>
+            </Command>
+          </PopoverContent>
+        </Popover>
+        <div className="flex gap-2 flex-1">
+          <Input
+            value={manual}
+            onChange={(e) => setManual(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addManual(); } }}
+            placeholder="…atau ketik manual nama / ID pelanggan"
+            data-testid="mg-add-customer-manual"
+          />
+          <Button type="button" variant="secondary" onClick={addManual} data-testid="mg-add-customer-btn">Tambah</Button>
+        </div>
+      </div>
+      {error && <div className="text-xs text-rose-600 dark:text-rose-400">{error}</div>}
+      {list.length > 0 && (
+        <div className="border border-border rounded-md divide-y divide-border max-h-56 overflow-y-auto bg-background" data-testid="mg-affected-list">
+          {list.map((c, i) => (
+            <div key={i} className="flex items-center justify-between gap-2 px-3 py-2 text-sm" data-testid={`mg-affected-${i}`}>
+              <div className="min-w-0">
+                <div className="truncate font-medium">{c.customer_name}</div>
+                {c.customer_id && <div className="text-[10px] text-muted-foreground">dari database</div>}
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] px-2 py-0.5 rounded-full border border-rose-500/40 bg-rose-500/10 text-rose-600 dark:text-rose-300">Down</span>
+                <button type="button" onClick={() => remove(i)} className="text-muted-foreground hover:text-rose-600" data-testid={`mg-affected-remove-${i}`}>
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

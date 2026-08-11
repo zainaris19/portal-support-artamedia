@@ -235,3 +235,10 @@ Enhancement (tanpa mengubah flow CRM existing). Dua fitur:
 
 ## Metadata / Link Preview (Aug 10, 2026) — ✅ DONE
 - `frontend/public/index.html`: description diganti "A product of emergent.sh" → "By PT Artamedia Citra Telematika Indonesia". Ditambah Open Graph + Twitter card (og:site_name/og:title = "Portal Support | Artamedia", og:description = "By PT Artamedia Citra Telematika Indonesia", og:url = https://portal-support.artamedianet.co.id). Title tetap. Tidak ada perubahan UI/fitur/flow.
+
+## Fitur Baru: Jenis Tiket PSB & Multigangguan (Aug 11, 2026) — ✅ DONE, verified iter_9 (backend 9/9, frontend 100%)
+Additive — struktur & flow CRM Gangguan existing TIDAK diubah. Jenis tiket = field `ticket_type` (GANGGUAN default/legacy, PSB, MULTIGANGGUAN).
+- Backend (crm_helpdesk.py): TicketCreate + create_ticket menyimpan ticket_type, psb_service_type/psb_package/psb_install_address (PSB), mg_cause + affected_customers[] (MG). list_tickets filter `ticket_type` (GANGGUAN termasuk tiket legacy tanpa field). resolve_ticket: MULTIGANGGUAN wajib SEMUA affected 'Restored' dulu (400 kalau belum). Endpoint affected: POST/PATCH/DELETE /tickets/{tid}/affected[/{acid}].
+- Notifications: resume WhatsApp + tracking publik dipakai sama; resume menambah baris "🏷 Jenis:", payload /track menambah ticket_type.
+- Frontend: OpenTicket selector jenis tiket + field kondisional (PSB fields; MG cause + editor pelanggan terdampak pilih-DB/manual). Ticket Masuk/Diproses/Selesai: badge jenis + filter [Semua][Gangguan][PSB][Multigangguan]. TicketDetail: PsbCard + AffectedPanel (toggle Down/Restored, add/remove, progress X/Y, warning gating) + badge di header.
+- Eviden wajib min 1 foto saat close (sama Gangguan) untuk semua jenis.

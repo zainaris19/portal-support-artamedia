@@ -5,6 +5,36 @@ import { cn } from '@/lib/utils';
 export const HELPDESK_STATUSES = ['MASUK', 'DIPROSES', 'SELESAI'];
 export const PRIORITIES = ['Low', 'Medium', 'High', 'Critical'];
 export const REPORT_SOURCES = ['WhatsApp', 'Telepon', 'Email', 'Monitoring', 'Internal', 'Lainnya'];
+
+// Jenis tiket. GANGGUAN = flow existing (default). PSB = aktivasi pelanggan baru.
+// MULTIGANGGUAN = satu gangguan berdampak banyak pelanggan.
+export const TICKET_TYPES = ['GANGGUAN', 'PSB', 'MULTIGANGGUAN'];
+export const TICKET_TYPE_LABEL = {
+  GANGGUAN: 'Gangguan',
+  PSB: 'PSB',
+  MULTIGANGGUAN: 'Multigangguan',
+};
+export const PSB_SERVICE_TYPES = ['Broadband FTTH', 'Dedicated'];
+
+export const TYPE_STYLE = {
+  GANGGUAN: 'bg-rose-500/10 text-rose-700 dark:text-rose-300 border-rose-500/40',
+  PSB: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/40',
+  MULTIGANGGUAN: 'bg-violet-500/10 text-violet-700 dark:text-violet-300 border-violet-500/40',
+};
+
+export function TicketTypeBadge({ value }) {
+  const key = value || 'GANGGUAN';
+  const cls = TYPE_STYLE[key] || TYPE_STYLE.GANGGUAN;
+  return (
+    <span
+      data-testid={`ticket-type-${key}`}
+      className={cn('inline-flex items-center px-2 py-0.5 text-[11px] font-semibold border rounded-md tracking-wide', cls)}
+    >
+      {TICKET_TYPE_LABEL[key] || key}
+    </span>
+  );
+}
+
 export const WORK_STAGES = [
   'Survey lokasi', 'Pemeriksaan awal', 'Pengerjaan',
   'Penggantian perangkat', 'Perbaikan kabel', 'Pengujian',

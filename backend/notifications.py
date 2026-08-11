@@ -669,6 +669,7 @@ async def build_public_tracking(db, token: str) -> Dict[str, Any]:
 
     return {
         "ticket_number": t.get("ticket_number"),
+        "ticket_type": t.get("ticket_type") or "GANGGUAN",
         "status": t.get("status"),
         "status_label": STATUS_LABEL.get(t.get("status", ""), t.get("status")),
         "priority": t.get("priority"),
@@ -698,8 +699,11 @@ async def build_public_tracking(db, token: str) -> Dict[str, Any]:
 # ---------------------------------------------------------------------------
 # Closing Resume → Main / Management group (CRM enhancement)
 # ---------------------------------------------------------------------------
+_TICKET_TYPE_LABEL = {"GANGGUAN": "Gangguan", "PSB": "PSB (Aktivasi Baru)", "MULTIGANGGUAN": "Multigangguan"}
+
 CLOSING_RESUME_BODY = (
     "✅ RESUME TICKET SELESAI\n"
+    "🏷 Jenis: {{ticket_type_label}}\n"
     "🎫 Ticket: {{ticket_number}}\n"
     "👤 Customer: {{customer_name}}\n"
     "📍 Lokasi: {{location}}\n"
@@ -736,6 +740,7 @@ async def notify_closing_resume(db, ticket: Dict[str, Any]) -> None:
         history_url = f"{base}/track/{token}" if base else f"/track/{token}"
         ctx = {
             "ticket_number": ticket.get("ticket_number") or "-",
+            "ticket_type_label": _TICKET_TYPE_LABEL.get(ticket.get("ticket_type") or "GANGGUAN", "Gangguan"),
             "customer_name": ticket.get("customer_name") or "-",
             "location": ticket.get("location") or ticket.get("site") or "-",
             "category": ticket.get("category_name") or ticket.get("category") or "-",

@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 import Breadcrumb from '@/components/Breadcrumb';
 import api, { formatApiError } from '@/lib/api';
-import { PriorityBadge, StatusBadge, humanSeconds, durationSince, fmtLocal, PRIORITIES, WORK_STAGES } from './helpdeskUtils';
+import { PriorityBadge, StatusBadge, TicketTypeBadge, humanSeconds, durationSince, fmtLocal, PRIORITIES, WORK_STAGES } from './helpdeskUtils';
 import UploadZone from './components/UploadZone';
 import { FileImage, downloadFile } from './components/FileImage';
 import Lightbox from './components/Lightbox';
@@ -126,6 +126,7 @@ export default function TicketDetail() {
             <h1 className="text-xl md:text-2xl font-bold tracking-tight font-mono">{ticket.ticket_number}</h1>
             <StatusBadge value={ticket.status} />
             <PriorityBadge value={ticket.priority} />
+            <TicketTypeBadge value={ticket.ticket_type} />
           </div>
           <p className="text-sm text-muted-foreground mt-1">
             {ticket.customer_name} · {ticket.location || '—'} · dibuat {fmtLocal(ticket.created_at)} oleh {ticket.created_by_name}
@@ -187,6 +188,7 @@ export default function TicketDetail() {
               <InfoRow label="Customer" value={ticket.customer_name || '—'} />
               <InfoRow label="Lokasi / Site" value={ticket.location || '—'} />
               <InfoRow label="Kategori" value={ticket.category_name || '—'} />
+              {ticket.ticket_type === 'MULTIGANGGUAN' && <InfoRow label="Penyebab" value={ticket.mg_cause || '—'} />}
               <InfoRow label="Prioritas" value={<PriorityBadge value={ticket.priority} />} />
               <InfoRow label="Sumber Laporan" value={ticket.report_source} />
               <InfoRow label="Waktu Mulai Gangguan" value={fmtLocal(ticket.outage_started_at)} />
@@ -222,6 +224,11 @@ export default function TicketDetail() {
           </div>
 
           <AcsSnapshot customerId={ticket.customer_id} />
+
+          {ticket.ticket_type === 'PSB' && <PsbCard ticket={ticket} />}
+          {ticket.ticket_type === 'MULTIGANGGUAN' && (
+            <AffectedPanel ticket={ticket} canEdit={canWrite} onChanged={reload} />
+          )}
 
           {ticket.status === 'SELESAI' && (
             <InfoCard title="Penyelesaian" icon={CheckCircle2}>
@@ -817,6 +824,97 @@ function F({ label, full, children }) {
       <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{label}</Label>
       {children}
     </div>
+  );
+}
+
+function PsbCard({ ticket }) {
+  return (
+    <InfoCard title="Detail PSB (Aktivasi Pelanggan Baru)" icon={ClipboardCheck}>
+      <InfoRow label="Jenis Layanan" value={ticket.psb_service_type || '—'} />
+      <InfoRow label="Paket / Bandwidth" value={ticket.psb_package || '—'} />
+      <InfoRow label="Alamat Instalasi" value={<span className="whitespace-pre-wrap">{ticket.psb_install_address || '—'}</span>} vertical />
+    </InfoCard>
+  );
+}
+
+function AffectedPanel({ ticket, canEdit, onChanged }) {
+  const [manual, setManual] = useState('');
+  const list = ticket.affected_customers || [];
+  const restored = list.filter((c) => c.status === 'Restored').length;
+  const editable = canEdit && ticket.status !== 'SELESAI';
+
+  const setStatus = async (c, status) => {
+    try { await api.patch(`/crm/tickets/${ticket.id}/affected/${c.id}`, { status }); onChanged?.(); }
+    catch (err) { toast.error(formatApiError(err)); }
+  };
+  const add = async () => {
+    const name = manual.trim();
+    if (!name) return;
+    try { await api.post(`/crm/tickets/${ticket.id}/affected`, { customer_name: name, status: 'Down' }); setManual(''); onChanged?.(); }
+    catch (err) { toast.error(formatApiError(err)); }
+  };
+  const remove = async (c) => {
+    if (!window.confirm(`Hapus ${c.customer_name} dari daftar terdampak?`)) return;
+    try { await api.delete(`/crm/tickets/${ticket.id}/affected/${c.id}`); onChanged?.(); }
+    catch (err) { toast.error(formatApiError(err)); }
+  };
+
+  return (
+    <InfoCard
+      title="Pelanggan Terdampak"
+      icon={Users}
+      extra={<span className={cn('text-xs font-semibold', restored === list.length && list.length > 0 ? 'text-emerald-600 dark:text-emerald-300' : 'text-amber-600 dark:text-amber-300')} data-testid="detail-affected-progress">{restored}/{list.length} Restored</span>}
+    >
+      {ticket.status !== 'SELESAI' && (list.length === 0 || restored < list.length) && (
+        <div className="mb-3 text-xs rounded-md border border-amber-500/40 bg-amber-500/5 p-2 text-amber-700 dark:text-amber-300 flex items-center gap-1.5">
+          <ShieldAlert className="w-3.5 h-3.5 shrink-0" />
+          Ticket Multigangguan hanya bisa diselesaikan jika SEMUA pelanggan berstatus Restored.
+        </div>
+      )}
+      {list.length === 0 ? (
+        <div className="text-sm text-muted-foreground italic">Belum ada pelanggan terdampak.</div>
+      ) : (
+        <div className="border border-border rounded-md divide-y divide-border" data-testid="detail-affected-list">
+          {list.map((c, i) => (
+            <div key={c.id} className="flex items-center justify-between gap-2 px-3 py-2 text-sm" data-testid={`detail-affected-${i}`}>
+              <div className="min-w-0">
+                <div className="truncate font-medium">{c.customer_name}</div>
+                {c.restored_at && <div className="text-[10px] text-muted-foreground">restored {fmtLocal(c.restored_at)}</div>}
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                {c.status === 'Restored' ? (
+                  <span className="text-[11px] px-2 py-0.5 rounded-full border border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-300">Restored</span>
+                ) : (
+                  <span className="text-[11px] px-2 py-0.5 rounded-full border border-rose-500/40 bg-rose-500/10 text-rose-600 dark:text-rose-300">Down</span>
+                )}
+                {editable && (c.status === 'Restored' ? (
+                  <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setStatus(c, 'Down')} data-testid={`detail-affected-down-${i}`}>Set Down</Button>
+                ) : (
+                  <Button size="sm" className="h-7 text-xs" onClick={() => setStatus(c, 'Restored')} data-testid={`detail-affected-restore-${i}`}>Restore</Button>
+                ))}
+                {editable && (
+                  <button type="button" onClick={() => remove(c)} className="text-muted-foreground hover:text-rose-600" data-testid={`detail-affected-remove-${i}`}>
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+      {editable && (
+        <div className="mt-3 flex gap-2">
+          <Input
+            value={manual}
+            onChange={(e) => setManual(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); add(); } }}
+            placeholder="Tambah pelanggan terdampak (nama / ID)…"
+            data-testid="detail-affected-input"
+          />
+          <Button variant="secondary" onClick={add} data-testid="detail-affected-add">Tambah</Button>
+        </div>
+      )}
+    </InfoCard>
   );
 }
 

@@ -10,7 +10,7 @@ import { useNavigate } from 'react-router-dom';
 import { Search, ChevronLeft, ChevronRight, Eye, Wrench, ClipboardCheck, MapPin, Camera, User } from 'lucide-react';
 import Breadcrumb from '@/components/Breadcrumb';
 import api, { formatApiError } from '@/lib/api';
-import { PriorityBadge, StatusBadge, PRIORITIES, humanSeconds, durationSince, fmtLocal } from './helpdeskUtils';
+import { PriorityBadge, StatusBadge, TicketTypeBadge, PRIORITIES, TICKET_TYPES, TICKET_TYPE_LABEL, humanSeconds, durationSince, fmtLocal } from './helpdeskUtils';
 import { useCounts } from '@/context/CountsContext';
 
 const PAGE_SIZE = 15;
@@ -23,6 +23,7 @@ export default function TicketDiproses() {
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState('');
   const [priority, setPriority] = useState('all');
+  const [type, setType] = useState('all');
   const [page, setPage] = useState(1);
   const [, setTick] = useState(0);
 
@@ -32,12 +33,13 @@ export default function TicketDiproses() {
       const params = { status: 'DIPROSES', page, page_size: PAGE_SIZE };
       if (q) params.q = q;
       if (priority !== 'all') params.priority = priority;
+      if (type !== 'all') params.ticket_type = type;
       const { data } = await api.get('/crm/tickets', { params });
       setItems(data.items || []); setTotal(data.total || 0);
       refreshCounts();
     } catch (err) { toast.error(formatApiError(err)); }
     finally { setLoading(false); }
-  }, [page, q, priority, refreshCounts]);
+  }, [page, q, priority, type, refreshCounts]);
 
   useEffect(() => { load(); }, [load]);
   useEffect(() => { const t = setInterval(() => setTick((n) => n + 1), 15000); return () => clearInterval(t); }, []);
@@ -78,6 +80,13 @@ export default function TicketDiproses() {
                 {PRIORITIES.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
               </SelectContent>
             </Select>
+            <Select value={type} onValueChange={(v) => { setType(v); setPage(1); }}>
+              <SelectTrigger className="w-full md:w-44 h-9" data-testid="diproses-filter-type"><SelectValue placeholder="Jenis" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Semua Jenis</SelectItem>
+                {TICKET_TYPES.map((tt) => <SelectItem key={tt} value={tt}>{TICKET_TYPE_LABEL[tt]}</SelectItem>)}
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Mobile card list — <md */}
@@ -105,7 +114,7 @@ export default function TicketDiproses() {
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0 flex-1">
-                      <div className="font-mono text-[11px] font-semibold text-foreground">{t.ticket_number}</div>
+                      <div className="flex items-center gap-1.5"><span className="font-mono text-[11px] font-semibold text-foreground">{t.ticket_number}</span><TicketTypeBadge value={t.ticket_type} /></div>
                       <div className="text-sm font-medium mt-0.5 truncate">{t.customer_name || '—'}</div>
                       {t.location && (
                         <div className="text-[11px] text-muted-foreground truncate flex items-center gap-1 mt-0.5">
@@ -176,7 +185,7 @@ export default function TicketDiproses() {
                   return (
                     <TableRow key={t.id} className="hover:bg-accent/40" data-testid={`diproses-row-${t.id}`}>
                       <TableCell className="text-xs">
-                        <div className="font-mono font-semibold">{t.ticket_number}</div>
+                        <div className="flex items-center gap-1.5"><span className="font-mono font-semibold">{t.ticket_number}</span><TicketTypeBadge value={t.ticket_type} /></div>
                         <div className="text-[10px] text-muted-foreground">{fmtLocal(t.created_at)}</div>
                       </TableCell>
                       <TableCell className="text-sm max-w-[200px]">
